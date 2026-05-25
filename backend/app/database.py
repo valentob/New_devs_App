@@ -347,6 +347,11 @@ try:
             def __init__(self):
                 self.auth = ChallengeAuth()
                 self.service = self
+                self._circuit_open = False
+                self._failure_count = 0
+                self._last_failure = None
+                self._active_connections = 0
+                self._max_concurrent = 10
 
             def __getattr__(self, name):
                 # Return self for chaining (e.g. table().select())
@@ -356,17 +361,35 @@ try:
                  return self
             
             def select(self, *args):
-                return self
+                 return self
             
             def eq(self, *args):
-                return self
+                 return self
                 
             def in_(self, *args):
-                return self
+                 return self
 
             def execute(self):
                 # Return empty data for DB queries
                 return MockResponse()
+
+            async def get_pool_status(self) -> dict:
+                return {
+                    "initialized": True,
+                    "active_connections": self._active_connections,
+                    "max_connections": self._max_concurrent,
+                    "backend": "mock"
+                }
+
+            async def health_check(self) -> dict:
+                return {
+                    "status": "healthy",
+                    "connection_pool": await self.get_pool_status(),
+                    "timestamp": time.time()
+                }
+
+            async def execute_with_pool(self, operation_func, *args, **kwargs):
+                return await operation_func(self, *args, **kwargs)
 
         _base_client = ChallengeClient()
         supabase = ChallengeClient() # Type: ignore
